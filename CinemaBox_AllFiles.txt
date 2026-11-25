@@ -1,0 +1,2773 @@
+CINEMA BOX - ALL FILES IN ONE
+Har file "##### FILE: path" line se shuru hoti hai. extract.py chalane se sab files apne folders mein ban jati hain.
+(Is line se pehle ka text ignore hota hai.)
+
+##### FILE: README.md
+# CINEMA BOX
+
+Android phone + Android TV (API 22+) streaming app. Java, XML, ExoPlayer 2, Glide.
+
+## Build
+Push this project to GitHub (branch `main`). Actions > "Build APK" runs automatically.
+Download `CinemaBox-debug-apk` from the run's Artifacts. Installable file: app-debug.apk
+
+## Content
+- Sample metadata: `app/src/main/assets/movies.json` (NO stream links included).
+- Real catalog: set `API_BASE_URL` in `Config.java` (https). The app calls `GET {API_BASE_URL}/catalog`
+  and expects `{"items":[ ... ]}` in the same format as movies.json.
+- Streams: put your licensed/authorized MP4, HLS (.m3u8) or DASH (.mpd) URL in `streamUrl`
+  (movies) or in each episode `url` (series). Without it the app shows "No streaming source".
+- Adding titles needs only JSON changes, no UI code changes.
+
+## JSON fields
+id, title, type (movie|series|tv|anime), language, year, rating, ratingSource, genres[], cast[],
+director, runtime, synopsis, poster, backdrop, streamUrl, tags[] (hollywood, bollywood, south,
+hindi_dubbed, trending, latest, popular, featured), seasons[{number, episodes[{title, description, url}]}]
+
+##### FILE: .github/workflows/build.yml
+name: Build APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 7.6.4
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CinemaBox-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+##### FILE: settings.gradle
+include ':app'
+rootProject.name = 'CinemaBox'
+
+##### FILE: build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+##### FILE: gradle.properties
+org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+android.useAndroidX=true
+android.enableJetifier=false
+
+##### FILE: app/build.gradle
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 33
+    defaultConfig {
+        applicationId "com.cinemabox.app"
+        minSdkVersion 22
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.0'
+    implementation 'com.github.bumptech.glide:glide:4.15.1'
+    implementation 'com.google.android.exoplayer:exoplayer:2.18.7'
+}
+
+##### FILE: app/src/main/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.cinemabox.app">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:banner="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".DetailActivity" android:exported="false" />
+
+        <activity
+            android:name=".PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+            android:screenOrientation="sensorLandscape" />
+    </application>
+</manifest>
+
+##### FILE: app/src/main/assets/movies.json
+{"items":[
+{"id":"s001","title":"Sample Hollywood Action","type":"movie","language":"English","year":2025,"rating":7.8,"ratingSource":"sample","genres":["Action","Thriller"],"cast":["Sample Actor A","Sample Actor B"],"director":"Sample Director","runtime":"2h 05m","synopsis":"Sample metadata entry. Replace with licensed catalog data.","poster":"","backdrop":"","streamUrl":"","tags":["hollywood","trending","popular","featured"]},
+{"id":"s002","title":"Sample Hollywood Drama","type":"movie","language":"English","year":2023,"rating":7.2,"ratingSource":"sample","genres":["Drama"],"cast":["Sample Actor C"],"director":"Sample Director","runtime":"1h 52m","synopsis":"Sample metadata entry for a drama.","poster":"","backdrop":"","streamUrl":"","tags":["hollywood","popular"]},
+{"id":"s003","title":"Sample Bollywood Romance","type":"movie","language":"Hindi","year":2024,"rating":6.9,"ratingSource":"sample","genres":["Romance","Drama"],"cast":["Sample Actor D","Sample Actress E"],"director":"Sample Director","runtime":"2h 30m","synopsis":"Sample metadata entry for a Hindi romance.","poster":"","backdrop":"","streamUrl":"","tags":["bollywood","latest","trending","featured"]},
+{"id":"s004","title":"Sample Bollywood Thriller","type":"movie","language":"Hindi","year":2022,"rating":7.5,"ratingSource":"sample","genres":["Thriller"],"cast":["Sample Actor F"],"director":"Sample Director","runtime":"2h 10m","synopsis":"Sample metadata entry for a Hindi thriller.","poster":"","backdrop":"","streamUrl":"","tags":["bollywood","popular"]},
+{"id":"s005","title":"Sample South Epic","type":"movie","language":"Telugu","year":2025,"rating":8.0,"ratingSource":"sample","genres":["Action","Drama"],"cast":["Sample Actor G"],"director":"Sample Director","runtime":"2h 45m","synopsis":"Sample metadata entry for a Telugu epic.","poster":"","backdrop":"","streamUrl":"","tags":["south","trending","latest","featured"]},
+{"id":"s006","title":"Sample Tamil Thriller","type":"movie","language":"Tamil","year":2024,"rating":7.4,"ratingSource":"sample","genres":["Thriller","Crime"],"cast":["Sample Actor H"],"director":"Sample Director","runtime":"2h 15m","synopsis":"Sample metadata entry for a Tamil thriller.","poster":"","backdrop":"","streamUrl":"","tags":["south","latest"]},
+{"id":"s007","title":"Sample Malayalam Mystery","type":"movie","language":"Malayalam","year":2023,"rating":7.9,"ratingSource":"sample","genres":["Mystery"],"cast":["Sample Actor I"],"director":"Sample Director","runtime":"2h 00m","synopsis":"Sample metadata entry for a Malayalam mystery.","poster":"","backdrop":"","streamUrl":"","tags":["south","popular"]},
+{"id":"s008","title":"Sample Dubbed Adventure","type":"movie","language":"Hindi","year":2024,"rating":7.0,"ratingSource":"sample","genres":["Adventure","Action"],"cast":["Sample Actor J"],"director":"Sample Director","runtime":"2h 20m","synopsis":"Sample metadata entry for a Hindi dubbed film.","poster":"","backdrop":"","streamUrl":"","tags":["hindi_dubbed","popular","latest"]},
+{"id":"s009","title":"Sample Punjabi Comedy","type":"movie","language":"Punjabi","year":2025,"rating":6.8,"ratingSource":"sample","genres":["Comedy"],"cast":["Sample Actor K"],"director":"Sample Director","runtime":"2h 05m","synopsis":"Sample metadata entry for a Punjabi comedy.","poster":"","backdrop":"","streamUrl":"","tags":["latest"]},
+{"id":"s010","title":"Sample Web Series","type":"series","language":"English","year":2025,"rating":8.2,"ratingSource":"sample","genres":["Crime","Drama"],"cast":["Sample Actor L","Sample Actress M"],"director":"Sample Creator","runtime":"50m per episode","synopsis":"Sample series entry with two seasons.","poster":"","backdrop":"","streamUrl":"","tags":["trending","popular"],"seasons":[
+ {"number":1,"episodes":[{"title":"Pilot","description":"Sample episode description.","url":""},{"title":"The Plan","description":"Sample episode description.","url":""},{"title":"Fallout","description":"Sample episode description.","url":""}]},
+ {"number":2,"episodes":[{"title":"Return","description":"Sample episode description.","url":""},{"title":"Finale","description":"Sample episode description.","url":""}]}]},
+{"id":"s011","title":"Sample Hindi Web Series","type":"series","language":"Hindi","year":2024,"rating":7.6,"ratingSource":"sample","genres":["Drama","Crime"],"cast":["Sample Actor N"],"director":"Sample Creator","runtime":"45m per episode","synopsis":"Sample Hindi series entry.","poster":"","backdrop":"","streamUrl":"","tags":["popular","latest"],"seasons":[
+ {"number":1,"episodes":[{"title":"Episode 1","description":"Sample episode description.","url":""},{"title":"Episode 2","description":"Sample episode description.","url":""}]}]},
+{"id":"s012","title":"Sample Anime One","type":"anime","language":"Japanese","year":2025,"rating":8.4,"ratingSource":"sample","genres":["Animation","Fantasy"],"cast":["Sample Voice A"],"director":"Sample Director","runtime":"24m per episode","synopsis":"Sample anime entry.","poster":"","backdrop":"","streamUrl":"","tags":["trending","popular","featured"],"seasons":[
+ {"number":1,"episodes":[{"title":"Episode 1","description":"Sample episode description.","url":""},{"title":"Episode 2","description":"Sample episode description.","url":""},{"title":"Episode 3","description":"Sample episode description.","url":""}]}]},
+{"id":"s013","title":"Sample Korean Drama","type":"tv","language":"Korean","year":2024,"rating":8.0,"ratingSource":"sample","genres":["Romance","Drama"],"cast":["Sample Actor O"],"director":"Sample Director","runtime":"60m per episode","synopsis":"Sample Korean drama entry.","poster":"","backdrop":"","streamUrl":"","tags":["trending"],"seasons":[
+ {"number":1,"episodes":[{"title":"Episode 1","description":"Sample episode description.","url":""},{"title":"Episode 2","description":"Sample episode description.","url":""}]}]},
+{"id":"s014","title":"Sample TV Talk Show","type":"tv","language":"English","year":2025,"rating":6.5,"ratingSource":"sample","genres":["Talk Show"],"cast":["Sample Host"],"director":"Sample Producer","runtime":"40m per episode","synopsis":"Sample TV show entry.","poster":"","backdrop":"","streamUrl":"","tags":["latest"],"seasons":[
+ {"number":1,"episodes":[{"title":"Episode 1","description":"Sample episode description.","url":""}]}]}
+]}
+
+##### FILE: app/src/main/res/values/strings.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CINEMA BOX</string>
+</resources>
+
+##### FILE: app/src/main/res/values/colors.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0A0E1A</color>
+    <color name="surface">#141A2E</color>
+    <color name="surface_hi">#1F2747</color>
+    <color name="purple">#7C3AED</color>
+    <color name="purple_dark">#5B21B6</color>
+    <color name="focus">#C4B5FD</color>
+    <color name="text">#FFFFFF</color>
+    <color name="text2">#A0A8C0</color>
+</resources>
+
+##### FILE: app/src/main/res/values/styles.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">@color/surface</item>
+        <item name="colorPrimaryDark">@color/bg</item>
+        <item name="colorAccent">@color/purple</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+
+    <style name="BtnPrimary">
+        <item name="android:background">@drawable/bg_button</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">@dimen/text_button</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="BtnSecondary" parent="BtnPrimary">
+        <item name="android:background">@drawable/bg_button_alt</item>
+    </style>
+</resources>
+
+##### FILE: app/src/main/res/values/dimens.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="card_width">104dp</dimen>
+    <dimen name="poster_height">156dp</dimen>
+    <dimen name="screen_pad">12dp</dimen>
+    <dimen name="banner_height">200dp</dimen>
+    <dimen name="text_card_title">12sp</dimen>
+    <dimen name="text_card_meta">10sp</dimen>
+    <dimen name="text_row_title">17sp</dimen>
+    <dimen name="text_banner_title">22sp</dimen>
+    <dimen name="text_banner_info">13sp</dimen>
+    <dimen name="text_chip">13sp</dimen>
+    <dimen name="text_spinner">13sp</dimen>
+    <dimen name="text_button">14sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_title">22sp</dimen>
+</resources>
+
+##### FILE: app/src/main/res/values-television/dimens.xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="card_width">168dp</dimen>
+    <dimen name="poster_height">250dp</dimen>
+    <dimen name="screen_pad">40dp</dimen>
+    <dimen name="banner_height">280dp</dimen>
+    <dimen name="text_card_title">16sp</dimen>
+    <dimen name="text_card_meta">13sp</dimen>
+    <dimen name="text_row_title">24sp</dimen>
+    <dimen name="text_banner_title">34sp</dimen>
+    <dimen name="text_banner_info">18sp</dimen>
+    <dimen name="text_chip">18sp</dimen>
+    <dimen name="text_spinner">18sp</dimen>
+    <dimen name="text_button">18sp</dimen>
+    <dimen name="text_body">18sp</dimen>
+    <dimen name="text_title">32sp</dimen>
+</resources>
+
+##### FILE: app/src/main/res/drawable/ic_launcher.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/purple" />
+    <corners android:radius="24dp" />
+</shape>
+
+##### FILE: app/src/main/res/drawable/bg_card.xml
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_hi" />
+            <stroke android:width="3dp" android:color="@color/focus" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_hi" />
+            <stroke android:width="3dp" android:color="@color/purple" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface" />
+            <stroke android:width="3dp" android:color="@android:color/transparent" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</selector>
+
+##### FILE: app/src/main/res/drawable/bg_button.xml
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/purple_dark" />
+            <stroke android:width="3dp" android:color="@color/text" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/purple_dark" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/purple" />
+            <stroke android:width="3dp" android:color="@android:color/transparent" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+</selector>
+
+##### FILE: app/src/main/res/drawable/bg_button_alt.xml
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_hi" />
+            <stroke android:width="3dp" android:color="@color/focus" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface" />
+            <stroke android:width="3dp" android:color="@android:color/transparent" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+</selector>
+
+##### FILE: app/src/main/res/drawable/bg_chip.xml
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/purple_dark" />
+            <stroke android:width="2dp" android:color="@color/text" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/purple" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+</selector>
+
+##### FILE: app/src/main/res/drawable/bg_input.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/surface" />
+    <stroke android:width="1dp" android:color="@color/surface_hi" />
+    <corners android:radius="22dp" />
+</shape>
+
+##### FILE: app/src/main/res/drawable/bg_poster.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="315" android:startColor="#1F2747" android:endColor="#3B1D7A" />
+    <corners android:radius="10dp" />
+</shape>
+
+##### FILE: app/src/main/res/drawable/bg_banner_gradient.xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#00000000" android:endColor="#F00A0E1A" />
+</shape>
+
+##### FILE: app/src/main/res/layout/item_spinner.xml
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="10dp"
+    android:singleLine="true"
+    android:textColor="@color/text"
+    android:textSize="@dimen/text_spinner" />
+
+##### FILE: app/src/main/res/layout/item_chip.xml
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_chip"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:textColor="@color/text"
+    android:textSize="@dimen/text_chip" />
+
+##### FILE: app/src/main/res/layout/item_card.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="@dimen/card_width"
+    android:layout_height="wrap_content"
+    android:layout_margin="6dp"
+    android:background="@drawable/bg_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="3dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/poster"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/poster_height"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/posterFallback"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/poster_height"
+            android:gravity="center"
+            android:padding="8dp"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_card_title"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="6dp"
+            android:background="@drawable/bg_chip"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:selected="true"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_card_meta" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/cardTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:textColor="@color/text"
+        android:textSize="@dimen/text_card_title"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/cardMeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:textColor="@color/focus"
+        android:textSize="@dimen/text_card_meta" />
+
+    <TextView
+        android:id="@+id/cardInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="4dp"
+        android:textColor="@color/text2"
+        android:textSize="@dimen/text_card_meta" />
+</LinearLayout>
+
+##### FILE: app/src/main/res/layout/item_row.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/rowTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad"
+        android:paddingTop="14dp"
+        android:paddingBottom="2dp"
+        android:textColor="@color/text"
+        android:textSize="@dimen/text_row_title"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rowList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad" />
+</LinearLayout>
+
+##### FILE: app/src/main/res/layout/item_banner.xml
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/banner_height"
+    android:layout_margin="@dimen/screen_pad"
+    android:background="@drawable/bg_poster"
+    android:clickable="true">
+
+    <ImageView
+        android:id="@+id/bannerImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_banner_gradient" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/bannerTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_banner_title"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/bannerInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:textColor="@color/text2"
+            android:textSize="@dimen/text_banner_info" />
+
+        <Button
+            android:id="@+id/bannerBtn"
+            style="@style/BtnPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Watch Now" />
+    </LinearLayout>
+</FrameLayout>
+
+##### FILE: app/src/main/res/layout/item_episode.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    android:background="@drawable/bg_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/epTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text"
+        android:textSize="@dimen/text_body"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/epDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text2"
+        android:textSize="@dimen/text_card_title" />
+
+    <TextView
+        android:id="@+id/epStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/focus"
+        android:textSize="@dimen/text_card_meta" />
+</LinearLayout>
+
+##### FILE: app/src/main/res/layout/activity_main.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad"
+        android:paddingTop="10dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textColor="@color/focus"
+            android:textSize="@dimen/text_title"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chip"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="Settings"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_chip" />
+    </LinearLayout>
+
+    <AutoCompleteTextView
+        android:id="@+id/searchBox"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginStart="@dimen/screen_pad"
+        android:layout_marginEnd="@dimen/screen_pad"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_input"
+        android:completionThreshold="1"
+        android:hint="Search title, actor, genre"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:singleLine="true"
+        android:textColor="@color/text"
+        android:textColorHint="@color/text2"
+        android:textSize="@dimen/text_body" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chips"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="6dp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <Spinner android:id="@+id/spLang" android:layout_width="150dp" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spGenre" android:layout_width="140dp" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spYear" android:layout_width="120dp" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spType" android:layout_width="130dp" android:layout_height="wrap_content" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rows"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/purple" />
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Nothing found"
+            android:textColor="@color/text2"
+            android:textSize="@dimen/text_body"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@color/purple_dark"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="10dp"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_card_title"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>
+
+##### FILE: app/src/main/res/layout-television/activity_main.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad"
+        android:paddingTop="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textColor="@color/focus"
+            android:textSize="@dimen/text_title"
+            android:textStyle="bold" />
+
+        <AutoCompleteTextView
+            android:id="@+id/searchBox"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input"
+            android:completionThreshold="1"
+            android:hint="Search title, actor, genre"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:singleLine="true"
+            android:textColor="@color/text"
+            android:textColorHint="@color/text2"
+            android:textSize="@dimen/text_body" />
+
+        <TextView
+            android:id="@+id/btnSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chip"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:text="Settings"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_chip" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad"
+        android:paddingTop="8dp">
+
+        <Spinner android:id="@+id/spLang" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+        <Spinner android:id="@+id/spGenre" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+        <Spinner android:id="@+id/spYear" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+        <Spinner android:id="@+id/spType" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chips"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/screen_pad"
+        android:paddingEnd="@dimen/screen_pad"
+        android:paddingTop="6dp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rows"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="34dp"
+            android:paddingEnd="34dp"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/purple" />
+
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Nothing found"
+            android:textColor="@color/text2"
+            android:textSize="@dimen/text_body"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@color/purple_dark"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="14dp"
+            android:textColor="@color/text"
+            android:textSize="@dimen/text_card_title"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>
+
+##### FILE: app/src/main/res/layout/activity_detail.xml
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="220dp">
+
+            <ImageView
+                android:id="@+id/detBackdrop"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_banner_gradient" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-70dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <ImageView
+                android:id="@+id/detPoster"
+                android:layout_width="110dp"
+                android:layout_height="165dp"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/detTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text"
+                    android:textSize="@dimen/text_title"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/detMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_card_title" />
+
+                <TextView
+                    android:id="@+id/detRating"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/focus"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/detGenres"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_card_title" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <Button
+                android:id="@+id/btnWatch"
+                style="@style/BtnPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Watch Now">
+                <requestFocus />
+            </Button>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnWatchlist"
+                    style="@style/BtnSecondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1" />
+
+                <Button
+                    android:id="@+id/btnFavorite"
+                    style="@style/BtnSecondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/detSynopsis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textColor="@color/text"
+                android:textSize="@dimen/text_body" />
+
+            <TextView
+                android:id="@+id/detCast"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/text2"
+                android:textSize="@dimen/text_card_title" />
+
+            <TextView
+                android:id="@+id/detDirector"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text2"
+                android:textSize="@dimen/text_card_title" />
+
+            <LinearLayout
+                android:id="@+id/seriesBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Seasons &amp; Episodes"
+                    android:textColor="@color/text"
+                    android:textSize="@dimen/text_row_title"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spSeason"
+                    android:layout_width="180dp"
+                    android:layout_height="wrap_content" />
+
+                <LinearLayout
+                    android:id="@+id/episodesBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
+
+##### FILE: app/src/main/res/layout-television/activity_detail.xml
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <ImageView
+        android:id="@+id/detBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.35"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="@dimen/screen_pad">
+
+            <ImageView
+                android:id="@+id/detPoster"
+                android:layout_width="240dp"
+                android:layout_height="360dp"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/detTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text"
+                    android:textSize="@dimen/text_title"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/detMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_body" />
+
+                <TextView
+                    android:id="@+id/detRating"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/focus"
+                    android:textSize="@dimen/text_body"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/detGenres"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_body" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnWatch"
+                        style="@style/BtnPrimary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="28dp"
+                        android:paddingEnd="28dp"
+                        android:text="Watch Now">
+                        <requestFocus />
+                    </Button>
+
+                    <Button
+                        android:id="@+id/btnWatchlist"
+                        style="@style/BtnSecondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingEnd="24dp" />
+
+                    <Button
+                        android:id="@+id/btnFavorite"
+                        style="@style/BtnSecondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingEnd="24dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/detSynopsis"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:textColor="@color/text"
+                    android:textSize="@dimen/text_body" />
+
+                <TextView
+                    android:id="@+id/detCast"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_body" />
+
+                <TextView
+                    android:id="@+id/detDirector"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/text2"
+                    android:textSize="@dimen/text_body" />
+
+                <LinearLayout
+                    android:id="@+id/seriesBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Seasons &amp; Episodes"
+                        android:textColor="@color/text"
+                        android:textSize="@dimen/text_row_title"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spSeason"
+                        android:layout_width="260dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:id="@+id/episodesBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
+
+##### FILE: app/src/main/res/layout/activity_player.xml
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <com.google.android.exoplayer2.ui.StyledPlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:resize_mode="fit"
+        app:show_buffering="when_playing" />
+
+    <TextView
+        android:id="@+id/playerMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:padding="20dp"
+        android:textColor="@color/text"
+        android:textSize="@dimen/text_body"
+        android:visibility="gone" />
+</FrameLayout>
+
+##### FILE: app/src/main/java/com/cinemabox/app/Config.java
+package com.cinemabox.app;
+
+public class Config {
+    /** Your licensed catalog API base URL (https). Leave empty to use assets/movies.json. */
+    public static final String API_BASE_URL = "";
+    /** Catalog endpoint. Must return {"items":[...]} like assets/movies.json */
+    public static final String CATALOG_PATH = "/catalog";
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/model/Content.java
+package com.cinemabox.app.model;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Content {
+    public String id = "", title = "", type = "movie", language = "", synopsis = "", director = "",
+            runtime = "", poster = "", backdrop = "", streamUrl = "", ratingSource = "";
+    public int year;
+    public double rating;
+    public List<String> genres = new ArrayList<>();
+    public List<String> cast = new ArrayList<>();
+    public List<String> tags = new ArrayList<>();
+    public List<Season> seasons = new ArrayList<>();
+
+    public static class Episode {
+        public String id = "", title = "", description = "", url = "";
+    }
+
+    public static class Season {
+        public int number;
+        public List<Episode> episodes = new ArrayList<>();
+    }
+
+    public boolean hasEpisodes() {
+        return !seasons.isEmpty();
+    }
+
+    public String typeLabel() {
+        switch (type) {
+            case "movie": return "Movie";
+            case "series": return "Series";
+            case "anime": return "Anime";
+            case "tv": return "TV Show";
+            default: return type;
+        }
+    }
+
+    public static Content fromJson(JSONObject o) {
+        Content c = new Content();
+        c.id = o.optString("id", "");
+        c.title = o.optString("title", "Untitled");
+        c.type = o.optString("type", "movie");
+        c.language = o.optString("language", "");
+        c.synopsis = o.optString("synopsis", "");
+        c.director = o.optString("director", "");
+        c.runtime = o.optString("runtime", "");
+        c.poster = o.optString("poster", "");
+        c.backdrop = o.optString("backdrop", "");
+        c.streamUrl = o.optString("streamUrl", "");
+        c.ratingSource = o.optString("ratingSource", "");
+        c.year = o.optInt("year", 0);
+        c.rating = o.optDouble("rating", 0);
+        c.genres = strings(o.optJSONArray("genres"), false);
+        c.cast = strings(o.optJSONArray("cast"), false);
+        c.tags = strings(o.optJSONArray("tags"), true);
+        JSONArray ss = o.optJSONArray("seasons");
+        if (ss != null) {
+            for (int i = 0; i < ss.length(); i++) {
+                JSONObject so = ss.optJSONObject(i);
+                if (so == null) continue;
+                Season s = new Season();
+                s.number = so.optInt("number", i + 1);
+                JSONArray es = so.optJSONArray("episodes");
+                if (es != null) {
+                    for (int j = 0; j < es.length(); j++) {
+                        JSONObject eo = es.optJSONObject(j);
+                        if (eo == null) continue;
+                        Episode e = new Episode();
+                        e.id = c.id + "_s" + s.number + "e" + (j + 1);
+                        e.title = eo.optString("title", "Episode " + (j + 1));
+                        e.description = eo.optString("description", "");
+                        e.url = eo.optString("url", "");
+                        s.episodes.add(e);
+                    }
+                }
+                c.seasons.add(s);
+            }
+        }
+        return c;
+    }
+
+    private static List<String> strings(JSONArray a, boolean lower) {
+        List<String> out = new ArrayList<>();
+        if (a == null) return out;
+        for (int i = 0; i < a.length(); i++) {
+            String s = a.optString(i, "");
+            if (!s.isEmpty()) out.add(lower ? s.toLowerCase() : s);
+        }
+        return out;
+    }
+
+    public static String join(List<String> l, String sep) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < l.size(); i++) {
+            if (i > 0) sb.append(sep);
+            sb.append(l.get(i));
+        }
+        return sb.toString();
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/data/Repository.java
+package com.cinemabox.app.data;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.cinemabox.app.Config;
+import com.cinemabox.app.model.Content;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Repository {
+
+    public interface Callback {
+        void onResult(List<Content> items, String message);
+    }
+
+    private static List<Content> cache;
+
+    public static void load(final Context ctx, boolean force, final Callback cb) {
+        if (!force && cache != null) {
+            cb.onResult(cache, null);
+            return;
+        }
+        final Context app = ctx.getApplicationContext();
+        final Handler main = new Handler(Looper.getMainLooper());
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                List<Content> list = null;
+                String msg = null;
+                if (!Config.API_BASE_URL.isEmpty()) {
+                    try {
+                        list = parse(download(Config.API_BASE_URL + Config.CATALOG_PATH));
+                    } catch (Exception e) {
+                        msg = "Network error. Showing offline sample data. Tap to retry.";
+                    }
+                }
+                if (list == null) {
+                    try {
+                        list = parse(readAsset(app));
+                    } catch (Exception e) {
+                        list = new ArrayList<>();
+                        msg = "Could not load catalog. Tap to retry.";
+                    }
+                }
+                final List<Content> result = list;
+                final String message = msg;
+                if (message == null) cache = result;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        cb.onResult(result, message);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private static String download(String url) throws Exception {
+        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+        con.setConnectTimeout(10000);
+        con.setReadTimeout(10000);
+        try {
+            if (con.getResponseCode() != 200) throw new Exception("HTTP " + con.getResponseCode());
+            return read(con.getInputStream());
+        } finally {
+            con.disconnect();
+        }
+    }
+
+    private static String readAsset(Context c) throws Exception {
+        return read(c.getAssets().open("movies.json"));
+    }
+
+    private static String read(InputStream in) throws Exception {
+        BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = r.readLine()) != null) sb.append(line).append('\n');
+        r.close();
+        return sb.toString();
+    }
+
+    private static List<Content> parse(String s) throws Exception {
+        s = s.trim();
+        JSONArray arr = s.startsWith("[") ? new JSONArray(s) : new JSONObject(s).optJSONArray("items");
+        List<Content> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.optJSONObject(i);
+            if (o != null) out.add(Content.fromJson(o));
+        }
+        return out;
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/data/UserStore.java
+package com.cinemabox.app.data;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONArray;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class UserStore {
+    public static final String WATCHLIST = "watchlist";
+    public static final String FAVORITES = "favorites";
+    public static final String CONTINUE = "continue";
+    public static final String RECENT = "recent";
+    public static final String HISTORY = "history";
+
+    private final SharedPreferences sp;
+
+    public UserStore(Context c) {
+        sp = c.getApplicationContext().getSharedPreferences("cinemabox", Context.MODE_PRIVATE);
+    }
+
+    public List<String> list(String key) {
+        List<String> out = new ArrayList<>();
+        try {
+            JSONArray a = new JSONArray(sp.getString(key, "[]"));
+            for (int i = 0; i < a.length(); i++) out.add(a.getString(i));
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
+    private void save(String key, List<String> l) {
+        sp.edit().putString(key, new JSONArray(l).toString()).apply();
+    }
+
+    public boolean contains(String key, String id) {
+        return list(key).contains(id);
+    }
+
+    public boolean toggle(String key, String id) {
+        List<String> l = list(key);
+        boolean added;
+        if (l.contains(id)) {
+            l.remove(id);
+            added = false;
+        } else {
+            l.add(0, id);
+            added = true;
+        }
+        save(key, l);
+        return added;
+    }
+
+    public void addFront(String key, String id, int max) {
+        List<String> l = list(key);
+        l.remove(id);
+        l.add(0, id);
+        while (l.size() > max) l.remove(l.size() - 1);
+        save(key, l);
+    }
+
+    public void remove(String key, String id) {
+        List<String> l = list(key);
+        l.remove(id);
+        save(key, l);
+    }
+
+    public void clear(String key) {
+        sp.edit().remove(key).apply();
+    }
+
+    public long getPosition(String mediaId) {
+        return sp.getLong("pos_" + mediaId, 0);
+    }
+
+    public String getLast(String contentId) {
+        return sp.getString("last_" + contentId, null);
+    }
+
+    public void saveProgress(String contentId, String mediaId, long pos, long dur, boolean hasEpisodes) {
+        boolean done = dur > 0 && pos >= dur * 95 / 100;
+        SharedPreferences.Editor e = sp.edit();
+        if (done) e.remove("pos_" + mediaId);
+        else if (pos > 2000) e.putLong("pos_" + mediaId, pos);
+        e.putString("last_" + contentId, mediaId);
+        e.apply();
+        if (done && !hasEpisodes) remove(CONTINUE, contentId);
+        else if (pos > 2000 || done) addFront(CONTINUE, contentId, 30);
+    }
+
+    public void clearProgress() {
+        SharedPreferences.Editor e = sp.edit();
+        for (Map.Entry<String, ?> en : sp.getAll().entrySet()) {
+            String k = en.getKey();
+            if (k.startsWith("pos_") || k.startsWith("last_")) e.remove(k);
+        }
+        e.remove(CONTINUE);
+        e.apply();
+    }
+
+    public boolean resumeEnabled() {
+        return sp.getBoolean("resume", true);
+    }
+
+    public void setResume(boolean v) {
+        sp.edit().putBoolean("resume", v).apply();
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/ImageUtil.java
+package com.cinemabox.app;
+
+import android.graphics.drawable.Drawable;
+import android.widget.ImageView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
+
+public class ImageUtil {
+    /** Returns true if an image URL was loaded, false if the placeholder is shown. */
+    public static boolean load(ImageView iv, String url, int radiusDp) {
+        if (url == null || url.isEmpty()) {
+            Glide.with(iv).clear(iv);
+            iv.setImageResource(R.drawable.bg_poster);
+            return false;
+        }
+        RequestBuilder<Drawable> rb = Glide.with(iv).load(url).placeholder(R.drawable.bg_poster);
+        if (radiusDp > 0) {
+            int px = (int) (radiusDp * iv.getResources().getDisplayMetrics().density);
+            rb = rb.transform(new CenterCrop(), new RoundedCorners(px));
+        } else {
+            rb = rb.centerCrop();
+        }
+        rb.into(iv);
+        return true;
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/CardAdapter.java
+package com.cinemabox.app;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.cinemabox.app.model.Content;
+
+import java.util.List;
+import java.util.Locale;
+
+public class CardAdapter extends RecyclerView.Adapter<CardAdapter.VH> {
+
+    public interface OnClick {
+        void onClick(Content c);
+    }
+
+    private final List<Content> items;
+    private final OnClick listener;
+    private final int gridPosterPx; // 0 = horizontal row card
+
+    public CardAdapter(List<Content> items, OnClick listener, int gridPosterPx) {
+        this.items = items;
+        this.listener = listener;
+        this.gridPosterPx = gridPosterPx;
+    }
+
+    static class VH extends RecyclerView.ViewHolder {
+        final ImageView poster;
+        final TextView fallback, badge, title, meta, info;
+
+        VH(View v) {
+            super(v);
+            poster = v.findViewById(R.id.poster);
+            fallback = v.findViewById(R.id.posterFallback);
+            badge = v.findViewById(R.id.badge);
+            title = v.findViewById(R.id.cardTitle);
+            meta = v.findViewById(R.id.cardMeta);
+            info = v.findViewById(R.id.cardInfo);
+        }
+    }
+
+    @Override
+    public VH onCreateViewHolder(ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_card, parent, false);
+        VH h = new VH(v);
+        if (gridPosterPx > 0) {
+            v.getLayoutParams().width = ViewGroup.LayoutParams.MATCH_PARENT;
+            h.poster.getLayoutParams().height = gridPosterPx;
+            h.fallback.getLayoutParams().height = gridPosterPx;
+        }
+        return h;
+    }
+
+    @Override
+    public void onBindViewHolder(VH h, int position) {
+        final Content c = items.get(position);
+        h.title.setText(c.title);
+        String meta = (c.year > 0 ? c.year + " \u2022 " : "") + c.typeLabel();
+        if (c.rating > 0) meta += " \u2022 \u2605 " + String.format(Locale.US, "%.1f", c.rating);
+        h.meta.setText(meta);
+        String info = Content.join(c.genres, ", ");
+        if (!c.runtime.isEmpty()) info += (info.isEmpty() ? "" : " \u2022 ") + c.runtime;
+        h.info.setText(info);
+        h.badge.setText(c.typeLabel());
+        boolean hasImage = ImageUtil.load(h.poster, c.poster, 10);
+        h.fallback.setVisibility(hasImage ? View.GONE : View.VISIBLE);
+        h.fallback.setText(c.title);
+        h.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                listener.onClick(c);
+            }
+        });
+    }
+
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/RowAdapter.java
+package com.cinemabox.app;
+
+import android.os.Handler;
+import android.os.Looper;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.cinemabox.app.model.Content;
+
+import java.util.List;
+
+public class RowAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    public static class Row {
+        public final String title;
+        public final List<Content> items;
+
+        public Row(String title, List<Content> items) {
+            this.title = title;
+            this.items = items;
+        }
+    }
+
+    private static final int T_BANNER = 0, T_ROW = 1;
+
+    private final List<Content> featured;
+    private final List<Row> rows;
+    private final CardAdapter.OnClick listener;
+    private final boolean hasBanner;
+
+    public RowAdapter(List<Content> featured, List<Row> rows, CardAdapter.OnClick listener) {
+        this.featured = featured;
+        this.rows = rows;
+        this.listener = listener;
+        this.hasBanner = !featured.isEmpty();
+    }
+
+    static class RowVH extends RecyclerView.ViewHolder {
+        final TextView title;
+        final RecyclerView list;
+
+        RowVH(View v) {
+            super(v);
+            title = v.findViewById(R.id.rowTitle);
+            list = v.findViewById(R.id.rowList);
+            list.setLayoutManager(new LinearLayoutManager(v.getContext(), LinearLayoutManager.HORIZONTAL, false));
+        }
+    }
+
+    static class BannerVH extends RecyclerView.ViewHolder {
+        final ImageView img;
+        final TextView title, info;
+        final List<Content> list;
+        final Handler handler = new Handler(Looper.getMainLooper());
+        int idx = 0;
+        final Runnable next = new Runnable() {
+            @Override
+            public void run() {
+                if (list.size() > 1) {
+                    idx = (idx + 1) % list.size();
+                    show(idx);
+                    handler.postDelayed(this, 5000);
+                }
+            }
+        };
+
+        BannerVH(View v, List<Content> featured, final CardAdapter.OnClick l) {
+            super(v);
+            list = featured;
+            img = v.findViewById(R.id.bannerImage);
+            title = v.findViewById(R.id.bannerTitle);
+            info = v.findViewById(R.id.bannerInfo);
+            Button btn = v.findViewById(R.id.bannerBtn);
+            View.OnClickListener ocl = new View.OnClickListener() {
+                @Override
+                public void onClick(View x) {
+                    l.onClick(list.get(idx));
+                }
+            };
+            v.setOnClickListener(ocl);
+            btn.setOnClickListener(ocl);
+            show(0);
+        }
+
+        void show(int i) {
+            Content c = list.get(i);
+            title.setText(c.title);
+            String s = (c.year > 0 ? c.year + " \u2022 " : "") + c.typeLabel();
+            if (!c.genres.isEmpty()) s += " \u2022 " + Content.join(c.genres, ", ");
+            info.setText(s);
+            ImageUtil.load(img, c.backdrop.isEmpty() ? c.poster : c.backdrop, 0);
+        }
+
+        void start() {
+            handler.removeCallbacks(next);
+            if (list.size() > 1) handler.postDelayed(next, 5000);
+        }
+
+        void stop() {
+            handler.removeCallbacks(next);
+        }
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return hasBanner && position == 0 ? T_BANNER : T_ROW;
+    }
+
+    @Override
+    public int getItemCount() {
+        return rows.size() + (hasBanner ? 1 : 0);
+    }
+
+    @Override
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        LayoutInflater inf = LayoutInflater.from(parent.getContext());
+        if (viewType == T_BANNER) {
+            return new BannerVH(inf.inflate(R.layout.item_banner, parent, false), featured, listener);
+        }
+        return new RowVH(inf.inflate(R.layout.item_row, parent, false));
+    }
+
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof RowVH) {
+            Row r = rows.get(position - (hasBanner ? 1 : 0));
+            RowVH h = (RowVH) holder;
+            h.title.setText(r.title);
+            h.list.setAdapter(new CardAdapter(r.items, listener, 0));
+        }
+    }
+
+    @Override
+    public void onViewAttachedToWindow(RecyclerView.ViewHolder holder) {
+        if (holder instanceof BannerVH) ((BannerVH) holder).start();
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(RecyclerView.ViewHolder holder) {
+        if (holder instanceof BannerVH) ((BannerVH) holder).stop();
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/MainActivity.java
+package com.cinemabox.app;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.DisplayMetrics;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.cinemabox.app.data.Repository;
+import com.cinemabox.app.data.UserStore;
+import com.cinemabox.app.model.Content;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
+public class MainActivity extends AppCompatActivity {
+
+    private static final String[] CATEGORIES = {"Home", "Movies", "Hollywood", "Bollywood", "South Indian",
+            "Hindi Dubbed", "Web Series", "TV Shows", "Anime", "Trending", "Latest Releases", "Popular",
+            "Continue Watching", "Watchlist", "Favorites", "Recently Watched"};
+    private static final String[] LANGS = {"Any language", "Hindi", "English", "Punjabi", "Tamil", "Telugu",
+            "Malayalam", "Japanese", "Korean"};
+    private static final String[] TYPES = {"Any type", "Movies", "Series", "TV Shows", "Anime"};
+    private static final String[] TYPE_KEYS = {"", "movie", "series", "tv", "anime"};
+
+    private interface Filter {
+        boolean ok(Content c);
+    }
+
+    private UserStore store;
+    private List<Content> all = new ArrayList<>();
+    private int category = 0;
+    private String query = "";
+    private boolean ready = false;
+    private int gridPosterPx;
+
+    private AutoCompleteTextView searchBox;
+    private Spinner spLang, spGenre, spYear, spType;
+    private RecyclerView chips, rows, grid;
+    private ProgressBar progress;
+    private TextView message, empty;
+    private ChipAdapter chipAdapter;
+
+    private final AdapterView.OnItemSelectedListener filterListener = new AdapterView.OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            render();
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+        }
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        store = new UserStore(this);
+
+        searchBox = findViewById(R.id.searchBox);
+        spLang = findViewById(R.id.spLang);
+        spGenre = findViewById(R.id.spGenre);
+        spYear = findViewById(R.id.spYear);
+        spType = findViewById(R.id.spType);
+        chips = findViewById(R.id.chips);
+        rows = findViewById(R.id.rows);
+        grid = findViewById(R.id.grid);
+        progress = findViewById(R.id.progress);
+        message = findViewById(R.id.message);
+        empty = findViewById(R.id.empty);
+
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int cardPx = getResources().getDimensionPixelSize(R.dimen.card_width);
+        int marginPx = (int) (12 * dm.density);
+        int span = Math.max(2, dm.widthPixels / (cardPx + marginPx));
+        int cell = dm.widthPixels / span;
+        gridPosterPx = (int) ((cell - 24 * dm.density) * 1.5f);
+
+        chipAdapter = new ChipAdapter();
+        chips.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        chips.setAdapter(chipAdapter);
+        rows.setLayoutManager(new LinearLayoutManager(this));
+        grid.setLayoutManager(new GridLayoutManager(this, span));
+
+        setSpinner(spLang, Arrays.asList(LANGS));
+        setSpinner(spType, Arrays.asList(TYPES));
+        setSpinner(spGenre, Collections.singletonList("Any genre"));
+        setSpinner(spYear, Collections.singletonList("Any year"));
+        spLang.setOnItemSelectedListener(filterListener);
+        spGenre.setOnItemSelectedListener(filterListener);
+        spYear.setOnItemSelectedListener(filterListener);
+        spType.setOnItemSelectedListener(filterListener);
+
+        searchBox.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                query = s.toString().trim().toLowerCase();
+                render();
+            }
+        });
+        searchBox.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                    saveHistory();
+                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                    if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                    return true;
+                }
+                return false;
+            }
+        });
+        refreshHistory();
+
+        findViewById(R.id.btnSettings).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSettings();
+            }
+        });
+        message.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                load(true);
+            }
+        });
+        load(false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (ready) render();
+    }
+
+    private void load(boolean force) {
+        progress.setVisibility(View.VISIBLE);
+        message.setVisibility(View.GONE);
+        Repository.load(this, force, new Repository.Callback() {
+            @Override
+            public void onResult(List<Content> items, String msg) {
+                if (isFinishing()) return;
+                progress.setVisibility(View.GONE);
+                all = items;
+                ready = true;
+                buildFilters();
+                if (msg != null) {
+                    message.setText(msg);
+                    message.setVisibility(View.VISIBLE);
+                }
+                render();
+            }
+        });
+    }
+
+    private void buildFilters() {
+        TreeSet<String> genres = new TreeSet<>();
+        TreeSet<Integer> years = new TreeSet<>(Collections.<Integer>reverseOrder());
+        for (Content c : all) {
+            genres.addAll(c.genres);
+            if (c.year > 0) years.add(c.year);
+        }
+        List<String> g = new ArrayList<>();
+        g.add("Any genre");
+        g.addAll(genres);
+        List<String> y = new ArrayList<>();
+        y.add("Any year");
+        for (Integer i : years) y.add(String.valueOf(i));
+        setSpinner(spGenre, g);
+        setSpinner(spYear, y);
+    }
+
+    private void setSpinner(Spinner sp, List<String> values) {
+        ArrayAdapter<String> a = new ArrayAdapter<>(this, R.layout.item_spinner, values);
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sp.setAdapter(a);
+    }
+
+    private String val(Spinner sp) {
+        if (sp.getSelectedItemPosition() <= 0 || sp.getSelectedItem() == null) return null;
+        return sp.getSelectedItem().toString();
+    }
+
+    private boolean isHome() {
+        return category == 0 && query.isEmpty() && val(spLang) == null && val(spGenre) == null
+                && val(spYear) == null && val(spType) == null;
+    }
+
+    private void render() {
+        if (!ready) return;
+        empty.setVisibility(View.GONE);
+        if (isHome()) {
+            List<Content> featured = new ArrayList<>();
+            for (Content c : all) if (c.tags.contains("featured")) featured.add(c);
+            if (featured.isEmpty()) {
+                for (int i = 0; i < Math.min(5, all.size()); i++) featured.add(all.get(i));
+            }
+            rows.setAdapter(new RowAdapter(featured, buildRows(), new CardAdapter.OnClick() {
+                @Override
+                public void onClick(Content c) {
+                    open(c);
+                }
+            }));
+            rows.setVisibility(View.VISIBLE);
+            grid.setVisibility(View.GONE);
+            if (all.isEmpty()) empty.setVisibility(View.VISIBLE);
+        } else {
+            List<Content> res = filter();
+            grid.setAdapter(new CardAdapter(res, new CardAdapter.OnClick() {
+                @Override
+                public void onClick(Content c) {
+                    open(c);
+                }
+            }, gridPosterPx));
+            rows.setVisibility(View.GONE);
+            grid.setVisibility(View.VISIBLE);
+            if (res.isEmpty()) empty.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private List<RowAdapter.Row> buildRows() {
+        List<RowAdapter.Row> r = new ArrayList<>();
+        addRow(r, "Continue Watching", byIds(store.list(UserStore.CONTINUE)));
+        addRow(r, "Trending Movies", where(new Filter() {
+            public boolean ok(Content c) { return "movie".equals(c.type) && c.tags.contains("trending"); }
+        }));
+        addRow(r, "Popular Movies", where(new Filter() {
+            public boolean ok(Content c) { return "movie".equals(c.type) && c.tags.contains("popular"); }
+        }));
+        addRow(r, "Latest Movies", where(new Filter() {
+            public boolean ok(Content c) { return "movie".equals(c.type) && c.tags.contains("latest"); }
+        }));
+        addRow(r, "Popular Web Series", where(new Filter() {
+            public boolean ok(Content c) { return "series".equals(c.type) && c.tags.contains("popular"); }
+        }));
+        addRow(r, "Anime Collection", where(new Filter() {
+            public boolean ok(Content c) { return "anime".equals(c.type); }
+        }));
+        addRow(r, "Hindi Dubbed", where(new Filter() {
+            public boolean ok(Content c) { return c.tags.contains("hindi_dubbed"); }
+        }));
+        addRow(r, "Recommended For You", recommended());
+        addRow(r, "Recently Watched", byIds(store.list(UserStore.RECENT)));
+        return r;
+    }
+
+    private void addRow(List<RowAdapter.Row> rows, String title, List<Content> items) {
+        if (!items.isEmpty()) rows.add(new RowAdapter.Row(title, items));
+    }
+
+    private List<Content> where(Filter f) {
+        List<Content> out = new ArrayList<>();
+        for (Content c : all) if (f.ok(c)) out.add(c);
+        return out;
+    }
+
+    private Content find(String id) {
+        for (Content c : all) if (c.id.equals(id)) return c;
+        return null;
+    }
+
+    private List<Content> byIds(List<String> ids) {
+        List<Content> out = new ArrayList<>();
+        for (String id : ids) {
+            Content c = find(id);
+            if (c != null) out.add(c);
+        }
+        return out;
+    }
+
+    private List<Content> recommended() {
+        final Set<String> liked = new HashSet<>();
+        Set<String> seen = new HashSet<>();
+        String[] keys = {UserStore.WATCHLIST, UserStore.FAVORITES, UserStore.RECENT, UserStore.CONTINUE};
+        for (String k : keys) {
+            for (String id : store.list(k)) {
+                Content c = find(id);
+                if (c != null) {
+                    liked.addAll(c.genres);
+                    seen.add(id);
+                }
+            }
+        }
+        List<Content> out = new ArrayList<>();
+        for (Content c : all) if (!seen.contains(c.id)) out.add(c);
+        Collections.sort(out, new Comparator<Content>() {
+            @Override
+            public int compare(Content a, Content b) {
+                return Double.compare(score(b, liked), score(a, liked));
+            }
+        });
+        return out.size() > 12 ? new ArrayList<>(out.subList(0, 12)) : out;
+    }
+
+    private double score(Content c, Set<String> liked) {
+        int overlap = 0;
+        for (String g : c.genres) if (liked.contains(g)) overlap++;
+        return overlap * 10 + c.rating;
+    }
+
+    private boolean matchesCategory(Content c, String cat) {
+        switch (cat) {
+            case "Movies": return "movie".equals(c.type);
+            case "Hollywood": return c.tags.contains("hollywood");
+            case "Bollywood": return c.tags.contains("bollywood");
+            case "South Indian": return c.tags.contains("south");
+            case "Hindi Dubbed": return c.tags.contains("hindi_dubbed");
+            case "Web Series": return "series".equals(c.type);
+            case "TV Shows": return "tv".equals(c.type);
+            case "Anime": return "anime".equals(c.type);
+            case "Trending": return c.tags.contains("trending");
+            case "Latest Releases": return c.tags.contains("latest");
+            case "Popular": return c.tags.contains("popular");
+            default: return true;
+        }
+    }
+
+    private boolean matchesQuery(Content c) {
+        if (c.title.toLowerCase().contains(query)) return true;
+        if (c.director.toLowerCase().contains(query)) return true;
+        for (String s : c.cast) if (s.toLowerCase().contains(query)) return true;
+        for (String s : c.genres) if (s.toLowerCase().contains(query)) return true;
+        return false;
+    }
+
+    private List<Content> filter() {
+        String cat = CATEGORIES[category];
+        List<Content> base;
+        switch (cat) {
+            case "Continue Watching": base = byIds(store.list(UserStore.CONTINUE)); break;
+            case "Watchlist": base = byIds(store.list(UserStore.WATCHLIST)); break;
+            case "Favorites": base = byIds(store.list(UserStore.FAVORITES)); break;
+            case "Recently Watched": base = byIds(store.list(UserStore.RECENT)); break;
+            default: base = all;
+        }
+        String lang = val(spLang), genre = val(spGenre), year = val(spYear);
+        int typeIdx = spType.getSelectedItemPosition();
+        String typeKey = typeIdx > 0 ? TYPE_KEYS[typeIdx] : null;
+        List<Content> out = new ArrayList<>();
+        for (Content c : base) {
+            if (!matchesCategory(c, cat)) continue;
+            if (!query.isEmpty() && !matchesQuery(c)) continue;
+            if (lang != null && !lang.equalsIgnoreCase(c.language)) continue;
+            if (genre != null) {
+                boolean g = false;
+                for (String s : c.genres) if (s.equalsIgnoreCase(genre)) g = true;
+                if (!g) continue;
+            }
+            if (year != null && !year.equals(String.valueOf(c.year))) continue;
+            if (typeKey != null && !typeKey.equals(c.type)) continue;
+            out.add(c);
+        }
+        return out;
+    }
+
+    private void open(Content c) {
+        saveHistory();
+        Intent i = new Intent(this, DetailActivity.class);
+        i.putExtra("id", c.id);
+        startActivity(i);
+    }
+
+    private void saveHistory() {
+        String q = searchBox.getText().toString().trim();
+        if (!q.isEmpty()) {
+            store.addFront(UserStore.HISTORY, q, 10);
+            refreshHistory();
+        }
+    }
+
+    private void refreshHistory() {
+        searchBox.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line,
+                store.list(UserStore.HISTORY)));
+    }
+
+    private void showSettings() {
+        String[] items = {
+                "Resume playback: " + (store.resumeEnabled() ? "ON" : "OFF") + " (tap to toggle)",
+                "Clear search history",
+                "Clear continue watching",
+                "Clear watchlist",
+                "Clear favorites",
+                "Clear recently watched",
+                "About"};
+        new AlertDialog.Builder(this).setTitle("Settings").setItems(items, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface d, int which) {
+                switch (which) {
+                    case 0: store.setResume(!store.resumeEnabled()); break;
+                    case 1: store.clear(UserStore.HISTORY); refreshHistory(); break;
+                    case 2: store.clearProgress(); break;
+                    case 3: store.clear(UserStore.WATCHLIST); break;
+                    case 4: store.clear(UserStore.FAVORITES); break;
+                    case 5: store.clear(UserStore.RECENT); break;
+                    default: Toast.makeText(MainActivity.this, "CINEMA BOX 1.0", Toast.LENGTH_SHORT).show();
+                }
+                render();
+            }
+        }).show();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (ready && !isHome()) {
+            category = 0;
+            chipAdapter.notifyDataSetChanged();
+            searchBox.setText("");
+            spLang.setSelection(0);
+            spGenre.setSelection(0);
+            spYear.setSelection(0);
+            spType.setSelection(0);
+            query = "";
+            render();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    private class ChipAdapter extends RecyclerView.Adapter<ChipAdapter.VH> {
+        class VH extends RecyclerView.ViewHolder {
+            final TextView t;
+
+            VH(View v) {
+                super(v);
+                t = (TextView) v;
+            }
+        }
+
+        @Override
+        public VH onCreateViewHolder(ViewGroup p, int type) {
+            return new VH(LayoutInflater.from(p.getContext()).inflate(R.layout.item_chip, p, false));
+        }
+
+        @Override
+        public void onBindViewHolder(final VH h, int pos) {
+            h.t.setText(CATEGORIES[pos]);
+            h.t.setSelected(pos == category);
+            h.t.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int p = h.getAdapterPosition();
+                    if (p == RecyclerView.NO_POSITION) return;
+                    category = p;
+                    notifyDataSetChanged();
+                    render();
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return CATEGORIES.length;
+        }
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/DetailActivity.java
+package com.cinemabox.app;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.cinemabox.app.data.Repository;
+import com.cinemabox.app.data.UserStore;
+import com.cinemabox.app.model.Content;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+public class DetailActivity extends AppCompatActivity {
+
+    private Content c;
+    private UserStore store;
+    private int seasonIdx = 0;
+
+    private ImageView detBackdrop, detPoster;
+    private TextView detTitle, detMeta, detRating, detGenres, detSynopsis, detCast, detDirector;
+    private Button btnWatch, btnWatchlist, btnFavorite;
+    private Spinner spSeason;
+    private LinearLayout seriesBox, episodesBox;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_detail);
+        store = new UserStore(this);
+        detBackdrop = findViewById(R.id.detBackdrop);
+        detPoster = findViewById(R.id.detPoster);
+        detTitle = findViewById(R.id.detTitle);
+        detMeta = findViewById(R.id.detMeta);
+        detRating = findViewById(R.id.detRating);
+        detGenres = findViewById(R.id.detGenres);
+        detSynopsis = findViewById(R.id.detSynopsis);
+        detCast = findViewById(R.id.detCast);
+        detDirector = findViewById(R.id.detDirector);
+        btnWatch = findViewById(R.id.btnWatch);
+        btnWatchlist = findViewById(R.id.btnWatchlist);
+        btnFavorite = findViewById(R.id.btnFavorite);
+        spSeason = findViewById(R.id.spSeason);
+        seriesBox = findViewById(R.id.seriesBox);
+        episodesBox = findViewById(R.id.episodesBox);
+
+        final String id = getIntent().getStringExtra("id");
+        Repository.load(this, false, new Repository.Callback() {
+            @Override
+            public void onResult(List<Content> items, String msg) {
+                if (isFinishing()) return;
+                for (Content x : items) if (x.id.equals(id)) c = x;
+                if (c == null) {
+                    Toast.makeText(DetailActivity.this, "Title not found", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+                bind();
+            }
+        });
+    }
+
+    private void bind() {
+        store.addFront(UserStore.RECENT, c.id, 30);
+        ImageUtil.load(detBackdrop, c.backdrop.isEmpty() ? c.poster : c.backdrop, 0);
+        ImageUtil.load(detPoster, c.poster, 10);
+        detTitle.setText(c.title);
+
+        List<String> meta = new ArrayList<>();
+        if (c.year > 0) meta.add(String.valueOf(c.year));
+        if (!c.runtime.isEmpty()) meta.add(c.runtime);
+        if (!c.language.isEmpty()) meta.add(c.language);
+        meta.add(c.typeLabel());
+        detMeta.setText(Content.join(meta, " \u2022 "));
+
+        if (c.rating > 0) {
+            String src = c.ratingSource.isEmpty() ? "" : " (" + c.ratingSource + ")";
+            detRating.setText("\u2605 " + String.format(Locale.US, "%.1f", c.rating) + src);
+        } else {
+            detRating.setVisibility(View.GONE);
+        }
+        detGenres.setText(Content.join(c.genres, " \u2022 "));
+        detSynopsis.setText(c.synopsis);
+        if (c.cast.isEmpty()) detCast.setVisibility(View.GONE);
+        else detCast.setText("Cast: " + Content.join(c.cast, ", "));
+        if (c.director.isEmpty()) detDirector.setVisibility(View.GONE);
+        else detDirector.setText("Director: " + c.director);
+
+        btnWatch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                watchNow();
+            }
+        });
+        btnWatchlist.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                store.toggle(UserStore.WATCHLIST, c.id);
+                refresh();
+            }
+        });
+        btnFavorite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                store.toggle(UserStore.FAVORITES, c.id);
+                refresh();
+            }
+        });
+
+        if (c.hasEpisodes()) {
+            seriesBox.setVisibility(View.VISIBLE);
+            List<String> names = new ArrayList<>();
+            for (Content.Season s : c.seasons) names.add("Season " + s.number);
+            ArrayAdapter<String> a = new ArrayAdapter<>(this, R.layout.item_spinner, names);
+            a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spSeason.setAdapter(a);
+            spSeason.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                    seasonIdx = pos;
+                    populateEpisodes();
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> p) {
+                }
+            });
+        }
+        refresh();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (c != null) refresh();
+    }
+
+    private void refresh() {
+        boolean resume = store.list(UserStore.CONTINUE).contains(c.id);
+        btnWatch.setText(resume ? "Resume" : "Watch Now");
+        btnWatchlist.setText(store.contains(UserStore.WATCHLIST, c.id) ? "In Watchlist" : "Add to Watchlist");
+        btnFavorite.setText(store.contains(UserStore.FAVORITES, c.id) ? "Favorited" : "Add to Favorites");
+        if (c.hasEpisodes()) populateEpisodes();
+    }
+
+    private void populateEpisodes() {
+        episodesBox.removeAllViews();
+        if (seasonIdx >= c.seasons.size()) return;
+        final Content.Season s = c.seasons.get(seasonIdx);
+        for (int i = 0; i < s.episodes.size(); i++) {
+            final int idx = i;
+            Content.Episode e = s.episodes.get(i);
+            View v = LayoutInflater.from(this).inflate(R.layout.item_episode, episodesBox, false);
+            ((TextView) v.findViewById(R.id.epTitle)).setText((i + 1) + ". " + e.title);
+            ((TextView) v.findViewById(R.id.epDesc)).setText(e.description);
+            long pos = store.getPosition(e.id);
+            ((TextView) v.findViewById(R.id.epStatus)).setText(pos > 0 ? "Resume at " + fmt(pos) : "");
+            v.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View x) {
+                    play(seasonIdx, idx);
+                }
+            });
+            episodesBox.addView(v);
+        }
+    }
+
+    private String fmt(long ms) {
+        long s = ms / 1000;
+        return String.format(Locale.US, "%d:%02d", s / 60, s % 60);
+    }
+
+    private void watchNow() {
+        if (!c.hasEpisodes()) {
+            play(-1, 0);
+            return;
+        }
+        int s = 0, e = 0;
+        String last = store.getLast(c.id);
+        if (last != null) {
+            for (int si = 0; si < c.seasons.size(); si++) {
+                List<Content.Episode> eps = c.seasons.get(si).episodes;
+                for (int ei = 0; ei < eps.size(); ei++) {
+                    if (eps.get(ei).id.equals(last)) {
+                        s = si;
+                        e = ei;
+                    }
+                }
+            }
+        }
+        play(s, e);
+    }
+
+    private void play(int season, int episode) {
+        String url;
+        if (season < 0) url = c.streamUrl;
+        else url = c.seasons.get(season).episodes.get(episode).url;
+        if (url == null || url.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("No streaming source")
+                    .setMessage("No authorized stream is connected for this title. Add a streamUrl (or episode url) "
+                            + "from your licensed catalog API. See README.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        Intent i = new Intent(this, PlayerActivity.class);
+        i.putExtra("id", c.id);
+        i.putExtra("season", season);
+        i.putExtra("episode", episode);
+        startActivity(i);
+    }
+}
+
+##### FILE: app/src/main/java/com/cinemabox/app/PlayerActivity.java
+package com.cinemabox.app;
+
+import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.cinemabox.app.data.Repository;
+import com.cinemabox.app.data.UserStore;
+import com.cinemabox.app.model.Content;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.MediaMetadata;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.StyledPlayerView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Player with Play/Pause, seek bar, speed, quality, audio and subtitle selection
+ * (built into the ExoPlayer controller settings menu), next/previous episode,
+ * resume playback, always fullscreen landscape.
+ */
+public class PlayerActivity extends AppCompatActivity {
+
+    private StyledPlayerView playerView;
+    private TextView messageView;
+    private ExoPlayer player;
+    private UserStore store;
+    private Content c;
+    private final List<MediaItem> items = new ArrayList<>();
+    private int startIndex = 0;
+    private long startPos = 0;
+    private String currentMediaId;
+    private boolean itemsReady = false, started = false;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_player);
+        playerView = findViewById(R.id.playerView);
+        messageView = findViewById(R.id.playerMessage);
+        store = new UserStore(this);
+
+        final String id = getIntent().getStringExtra("id");
+        final int season = getIntent().getIntExtra("season", -1);
+        final int episode = getIntent().getIntExtra("episode", 0);
+
+        messageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (player != null) {
+                    messageView.setVisibility(View.GONE);
+                    player.prepare();
+                }
+            }
+        });
+
+        Repository.load(this, false, new Repository.Callback() {
+            @Override
+            public void onResult(List<Content> list, String msg) {
+                if (isFinishing()) return;
+                for (Content x : list) if (x.id.equals(id)) c = x;
+                if (c == null) {
+                    showMessage("Title not found");
+                    return;
+                }
+                buildItems(season, episode);
+                if (items.isEmpty()) {
+                    showMessage("No authorized stream source for this title.");
+                    return;
+                }
+                startPos = store.resumeEnabled() ? store.getPosition(items.get(startIndex).mediaId) : 0;
+                itemsReady = true;
+                if (started) initPlayer();
+            }
+        });
+    }
+
+    private void buildItems(int season, int episode) {
+        if (c.hasEpisodes() && season >= 0 && season < c.seasons.size()) {
+            Content.Season s = c.seasons.get(season);
+            for (int i = 0; i < s.episodes.size(); i++) {
+                Content.Episode e = s.episodes.get(i);
+                if (e.url.isEmpty()) continue;
+                if (i == episode) startIndex = items.size();
+                items.add(item(e.id, e.url, c.title + " - " + e.title));
+            }
+        } else if (!c.streamUrl.isEmpty()) {
+            items.add(item(c.id, c.streamUrl, c.title));
+        }
+    }
+
+    private MediaItem item(String mediaId, String url, String title) {
+        return new MediaItem.Builder()
+                .setUri(url)
+                .setMediaId(mediaId)
+                .setMediaMetadata(new MediaMetadata.Builder().setTitle(title).build())
+                .build();
+    }
+
+    private void initPlayer() {
+        if (items.isEmpty() || player != null) return;
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+        currentMediaId = items.get(startIndex).mediaId;
+        player.setMediaItems(items, startIndex, startPos);
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                showMessage("Playback error: " + error.getErrorCodeName() + "\nTap to retry");
+            }
+
+            @Override
+            public void onMediaItemTransition(MediaItem item, int reason) {
+                if (currentMediaId != null && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    store.saveProgress(c.id, currentMediaId, 100, 100, c.hasEpisodes());
+                }
+                currentMediaId = item == null ? null : item.mediaId;
+            }
+        });
+        messageView.setVisibility(View.GONE);
+        player.setPlayWhenReady(true);
+        player.prepare();
+    }
+
+    private void showMessage(String m) {
+        messageView.setText(m);
+        messageView.setVisibility(View.VISIBLE);
+    }
+
+    private void saveProgress() {
+        if (player == null || c == null) return;
+        MediaItem mi = player.getCurrentMediaItem();
+        if (mi == null) return;
+        long dur = player.getDuration();
+        if (dur == C.TIME_UNSET) dur = 0;
+        store.saveProgress(c.id, mi.mediaId, player.getCurrentPosition(), dur, c.hasEpisodes());
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        started = true;
+        if (itemsReady) initPlayer();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (player != null) player.pause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        started = false;
+        if (player != null) {
+            saveProgress();
+            startIndex = player.getCurrentMediaItemIndex();
+            startPos = player.getCurrentPosition();
+            playerView.setPlayer(null);
+            player.release();
+            player = null;
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        return playerView.dispatchKeyEvent(event) || super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+    }
+}
